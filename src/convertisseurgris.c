@@ -18,7 +18,6 @@
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
-
 int main(int argc, char* argv[]){
     // On desactive le buffering pour les printf(), pour qu'il soit possible de les voir depuis votre ordinateur
 	setbuf(stdout, NULL);
@@ -43,11 +42,12 @@ int main(int argc, char* argv[]){
         return -1;
     }
 
-    if(strcmp(argv[1], "--debug") == 0){
-        // Mode debug, vous pouvez changer ces valeurs pour ce qui convient dans vos tests
-        printf("Mode debug selectionne pour le convertisseur niveau de gris\n");
-        entree = (char*)"/mem1";
-        sortie = (char*)"/mem2";
+    if (0) {
+    // if(strcmp(argv[1], "--debug") == 0){
+    //     // Mode debug, vous pouvez changer ces valeurs pour ce qui convient dans vos tests
+    //     printf("Mode debug selectionne pour le convertisseur niveau de gris\n");
+    //     entree = (char*)"/mem1";
+    //     sortie = (char*)"/mem2";
     }
     else{
         int c;
@@ -120,6 +120,54 @@ int main(int argc, char* argv[]){
     // fonction convertToGray de utils.c. Votre code doit lire une image depuis une zone mémoire 
     // partagée et envoyer le résultat sur une autre zone mémoire partagée.
     // N'oubliez pas de respecter la syntaxe de la ligne de commande présentée dans l'énoncé.
+    
+    // Convertit l'image en niveaux de gris
+    // Le buffer de sortie (output) DOIT être préalloué en considérant les dimensions de l'image.
+
+    // 
+    struct memPartage memoireLecture = {0};
+    struct memPartageHeader headerLecture = {0};
+    initMemoirePartageeLecteur(entree, &memoireLecture);
+
+    unsigned int hauteur = memoireLecture.header->hauteur;
+    unsigned int largeur = memoireLecture.header->largeur;
+    unsigned int canaux = 1; // pcq conversion en gris
+
+    struct memPartage memoireEcriture = {0};
+    unsigned int tailleMemoireEcriture = sizeof(struct memPartageHeader) + (hauteur * largeur * canaux);
+
+    initMemoirePartageeEcrivain(sortie, &memoireEcriture, tailleMemoireEcriture, &headerLecture);
+
+    unsigned char* image = (unsigned char*)tempsreel_malloc(memoireLecture.tailleDonnees);
+    unsigned char* imageFiltree = (unsigned char*)tempsreel_malloc(memoireEcriture.tailleDonnees);
+
+    // un processus ecrivain-lecteur interagit avec deux processus a la fois et a donc deux mutexes a gerer pour les deux 
+    // memoires partagees: un pour la lecture de l'image a convertir et un autre pour l'ecriture de l'image convertie
+    while (1) {
+        // d'abord on est un lecteur
+        pthread_mutex_lock(&(memoireLecture.header->mutex));
+        memoireLecture.header->frameReader++;
+        memcpy(image, memoireLecture.data, memoireLecture.tailleDonnees);
+        memoireLecture.copieCompteur = memoireLecture.header->frameWriter;
+        convertToGray(image, hauteur, largeur, canaux, imageFiltree);
+        pthread_mutex_unlock(&(memoireLecture.header->mutex));
+        attenteLecteur(&memoireLecture);
+
+        // ensuite on est un ecrivain
+        memcpy(memoireEcriture.data, imageFiltree, memoireEcriture.tailleDonnees);
+        memoireEcriture.copieCompteur = memoireEcriture.header->frameReader;
+        pthread_mutex_unlock(&(memoireEcriture.header->mutex));
+        attenteEcrivain(&memoireEcriture);
+        pthread_mutex_lock(&(memoireEcriture.header->mutex));
+        memoireEcriture.header->frameWriter++;
+
+    }
+    tempsreel_free(image);
+    tempsreel_free(imageFiltree);
+    shm_unlink(entree);
+    shm_unlink(sortie);
+    close(memoireEcriture.fd);
+    close(memoireLecture.fd);
 
     return 0;
 }

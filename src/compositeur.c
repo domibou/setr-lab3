@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <getopt.h>
 
 #include <sys/ioctl.h>
 
@@ -64,6 +65,7 @@
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
+#define MAX_FLUX 4
 
 // Fonction permettant de récupérer le temps courant sous forme double
 double get_time()
@@ -188,8 +190,96 @@ int main(int argc, char* argv[])
 {
     // TODO
     // ÉCRIVEZ ICI votre code d'analyse des arguments du programme et d'initialisation des zones mémoire partagées
-    int nbrActifs;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
-    
+	// Code lisant les options sur la ligne de commande
+    int modeOrdonnanceur = ORDONNANCEMENT_NORT;     // NORT est la valeur par defaut
+    unsigned int runtime, deadline, period;         // Dans le cas de l'ordonnanceur DEADLINE
+
+
+    if(argc < 1){
+        printf("Nombre d'arguments insuffisant\n");
+        return -1;
+    }
+	if (0) {
+    //if(strcmp(argv[1], "--debug") == 0){
+        // Mode debug, vous pouvez changer ces valeurs pour ce qui convient dans vos tests
+        printf("Mode debug selectionne pour le compositeur\n");
+        //entree = (char*)"/mem1";
+        //sortie = (char*)"/mem2";
+    }
+    else {
+    	int c;
+        int deadlineParamIndex = 0;
+        char* splitString;
+
+        opterr = 0;
+
+        while ((c = getopt (argc, argv, "s:d:")) != -1){
+            switch (c)
+                {
+                case 's':
+                    // On selectionne le mode d'ordonnancement
+                    if(strcmp(optarg, "NORT") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_NORT;
+                    }
+                    else if(strcmp(optarg, "RR") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_RR;
+                    }
+                    else if(strcmp(optarg, "FIFO") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_FIFO;
+                    }
+                    else if(strcmp(optarg, "DEADLINE") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_DEADLINE;
+                    }
+                    else{
+                        modeOrdonnanceur = ORDONNANCEMENT_NORT;
+                        printf("Mode d'ordonnancement %s non valide, defaut sur NORT\n", optarg);
+                    }
+                    break;
+                case 'd':
+                    // Dans le cas DEADLINE, on peut recevoir des parametres
+                    // Si un autre mode d'ordonnacement est selectionne, ces
+                    // parametres peuvent simplement etre ignores
+                    splitString = strtok(optarg, ",");
+                    while (splitString != NULL)
+                    {
+                        if(deadlineParamIndex == 0){
+                            // Runtime
+                            runtime = atoi(splitString);
+                        }
+                        else if(deadlineParamIndex == 1){
+                            deadline = atoi(splitString);
+                        }
+                        else{
+                            period = atoi(splitString);
+                            break;
+                        }
+                        deadlineParamIndex++;
+                        splitString = strtok(NULL, ",");
+                    }
+                    break;
+                default:
+                    continue;
+                }
+        }
+        // Ce qui suit est la description des zones memoires d'entree et de sortie
+        if(argc - optind < 1){
+            printf("Arguments manquants (au moins un flux entree necessaire)\n");
+            return -1;
+        }
+    } 
+
+	char* entrees[MAX_FLUX] = {0};
+	printf(&entrees[0]);
+	struct memPartage* memoiresPartagees[MAX_FLUX] = {0};
+	unsigned char* images[MAX_FLUX] = {0};
+	int nbrActifs = argc - optind;
+	
+	for (int i = 0; i < nbrActifs; i++) {
+		entrees[i] = argv[optind + i];
+		initMemoirePartageeLecteur(entrees[i], memoiresPartagees[i]);
+		images[i] = (unsigned char*)tempsreel_malloc(memoiresPartagees[i]->tailleDonnees);
+	}
+
     // On desactive le buffering pour les printf(), pour qu'il soit possible de les voir depuis votre ordinateur
 	setbuf(stdout, NULL);
 	
@@ -279,9 +369,15 @@ int main(int argc, char* argv[])
         
             // N'oubliez pas que toutes les images fournies à ecrireImage() DOIVENT être en
             // 427x240 (voir le commentaire en haut du document).
-        
-            // Exemple d'appel à ecrireImage (n'oubliez pas de remplacer les arguments commençant par A_REMPLIR!)
-            ecrireImage(A_REMPLIR_POSITION_ACTUELLE, 
+
+			for (int i = 0; i < nbrActifs; i++) {
+				if (pthread_mutex_trylock(&(memoiresPartagees[i]->header->mutex)) == 0) {
+					memoiresPartagees[i]->header->frameReader++;
+					memcpy(images[i], memoiresPartagees[i]->data, memoiresPartagees[i]->tailleDonnees);
+					memoiresPartagees[i]->copieCompteur = memoiresPartagees[i]->header->frameWriter;
+					pthread_mutex_unlock(&(memoiresPartagees[i]->header->mutex));
+
+					ecrireImage(i, 
                         nbrActifs, 
                         fbfd, 
                         fbp, 
@@ -289,17 +385,21 @@ int main(int argc, char* argv[])
                         vinfo.yres, 
                         &vinfo, 
                         finfo.line_length,
-                        A_REMPLIR_DONNEES_DE_LA_TRAME,
-                        A_REMPLIR_HAUTEUR_DE_LA_TRAME,
-                        A_REMPLIR_LARGEUR_DE_LA_TRAME,
-                        A_REMPLIR_NOMBRECANAUX_DANS_LA_TRAME);
+                        images[i],
+                        memoiresPartagees[i]->header->hauteur,
+                        memoiresPartagees[i]->header->largeur,
+                        memoiresPartagees[i]->header->canaux);
+				}
+				else {
+					continue;
+				}
+			}
     }
 
 
     // cleanup
     // Retirer le mmap
     munmap(fbp, screensize);
-
 
     // reset the display mode
     if (ioctl(fbfd, FBIOPUT_VSCREENINFO, &orig_vinfo)) {
