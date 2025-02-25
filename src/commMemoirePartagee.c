@@ -15,23 +15,22 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
     int descripteur = -1;
     while (descripteur < 0) {
         descripteur = shm_open(identifiant, O_RDWR, 0666);
-        usleep(DELAI_INIT_READER_USEC);
+        //usleep(DELAI_INIT_READER_USEC);
+        printf("descrpteur: %d",descripteur);
+        sleep(1);
     }
     
     struct stat fileStat = {0};
     int taille_shm = 0;
-    while (taille_shm < 1) {
+    while (taille_shm == 0) {
         fstat(descripteur, &fileStat);
         taille_shm = fileStat.st_size;
         usleep(DELAI_INIT_READER_USEC);
-    
     }
 
     void* ptr = mmap(NULL, taille_shm, PROT_READ | PROT_WRITE, MAP_SHARED, descripteur, 0);
-
     // REFERENCE de l'entete de L'ECRIVAIN
     struct memPartageHeader* entete =  (struct memPartageHeader*) ptr;
-
     pthread_mutex_lock(&(entete->mutex));
     while (entete->frameWriter == 0) {
         pthread_mutex_unlock(&(entete->mutex));

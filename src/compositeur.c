@@ -68,13 +68,13 @@
 #define MAX_FLUX 4
 
 // Fonction permettant de récupérer le temps courant sous forme double
-double get_time()
-{
-	struct timeval t;
-	struct timezone tzp;
-	gettimeofday(&t, &tzp);
-	return (double)t.tv_sec + (double)(t.tv_usec)*1e-6;
-}
+// double get_time()
+// {
+// 	struct timeval t;
+// 	struct timezone tzp;
+// 	gettimeofday(&t, &tzp);
+// 	return (double)t.tv_sec + (double)(t.tv_usec)*1e-6;
+// }
 
 
 // Cette fonction écrit l'image dans le framebuffer, à la position demandée. Elle est déjà codée pour vous,
@@ -188,6 +188,7 @@ void ecrireImage(const int position, const int total,
 
 int main(int argc, char* argv[])
 {
+	printf("DEBUT\n");
     // TODO
     // ÉCRIVEZ ICI votre code d'analyse des arguments du programme et d'initialisation des zones mémoire partagées
 	// Code lisant les options sur la ligne de commande
@@ -200,6 +201,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 	if (0) {
+		printf("if 0\n");
     //if(strcmp(argv[1], "--debug") == 0){
         // Mode debug, vous pouvez changer ces valeurs pour ce qui convient dans vos tests
         printf("Mode debug selectionne pour le compositeur\n");
@@ -207,6 +209,7 @@ int main(int argc, char* argv[])
         //sortie = (char*)"/mem2";
     }
     else {
+		printf("else\n");
     	int c;
         int deadlineParamIndex = 0;
         char* splitString;
@@ -214,6 +217,7 @@ int main(int argc, char* argv[])
         opterr = 0;
 
         while ((c = getopt (argc, argv, "s:d:")) != -1){
+			printf("while opt: %d", c);
             switch (c)
                 {
                 case 's':
@@ -269,15 +273,23 @@ int main(int argc, char* argv[])
     } 
 
 	char* entrees[MAX_FLUX] = {0};
-	printf(&entrees[0]);
-	struct memPartage* memoiresPartagees[MAX_FLUX] = {0};
+	struct memPartage* m1 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	struct memPartage* m2 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	struct memPartage* m3 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	struct memPartage* m4 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	struct memPartage* memoiresPartagees[MAX_FLUX] = {m1, m2, m3, m4};
+	//struct memPartage* memoiresPartagees[MAX_FLUX] = {0};
 	unsigned char* images[MAX_FLUX] = {0};
 	int nbrActifs = argc - optind;
 	
 	for (int i = 0; i < nbrActifs; i++) {
 		entrees[i] = argv[optind + i];
+		printf("entree[i]: %s\n", entrees[i]);
+		printf("memPartage[i]: %s\n", memoiresPartagees[i]);
 		initMemoirePartageeLecteur(entrees[i], memoiresPartagees[i]);
+		printf("init done:");
 		images[i] = (unsigned char*)tempsreel_malloc(memoiresPartagees[i]->tailleDonnees);
+		printf("iamges[]i: %d\n", sizeof(images[i]));
 	}
 
     // On desactive le buffering pour les printf(), pour qu'il soit possible de les voir depuis votre ordinateur
@@ -370,8 +382,10 @@ int main(int argc, char* argv[])
             // N'oubliez pas que toutes les images fournies à ecrireImage() DOIVENT être en
             // 427x240 (voir le commentaire en haut du document).
 
+			printf("nbrActifs:: %d", nbrActifs);
 			for (int i = 0; i < nbrActifs; i++) {
 				if (pthread_mutex_trylock(&(memoiresPartagees[i]->header->mutex)) == 0) {
+					printf("lock acqed\n");
 					memoiresPartagees[i]->header->frameReader++;
 					memcpy(images[i], memoiresPartagees[i]->data, memoiresPartagees[i]->tailleDonnees);
 					memoiresPartagees[i]->copieCompteur = memoiresPartagees[i]->header->frameWriter;
@@ -390,9 +404,7 @@ int main(int argc, char* argv[])
                         memoiresPartagees[i]->header->largeur,
                         memoiresPartagees[i]->header->canaux);
 				}
-				else {
-					continue;
-				}
+				
 			}
     }
 
