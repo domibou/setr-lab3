@@ -151,13 +151,6 @@ CMakeFiles/compositeur.dir/compositeur.c.o: \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/asm/unistd-eabi.h \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/bits/syscall.h \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/linux/sched.h \
- /home/setr/Bureau/setr-lab3/src/allocateurMemoire.h \
- /home/setr/Bureau/setr-lab3/src/commMemoirePartagee.h \
- /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include-fixed/pthread.h \
- /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/bits/setjmp.h \
- /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/bits/types/struct___jmp_buf_tag.h \
- /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/bits/pthread_stack_min-dynamic.h \
- /home/setr/Bureau/setr-lab3/src/utils.h \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/math.h \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/cmath \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/bits/cpp_type_traits.h \
@@ -201,4 +194,11 @@ CMakeFiles/compositeur.dir/compositeur.c.o: \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/tr1/modified_bessel_func.tcc \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/tr1/poly_hermite.tcc \
  /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/tr1/poly_laguerre.tcc \
- /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/tr1/riemann_zeta.tcc
+ /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include/c++/tr1/riemann_zeta.tcc \
+ /home/setr/Bureau/setr-lab3/src/allocateurMemoire.h \
+ /home/setr/Bureau/setr-lab3/src/commMemoirePartagee.h \
+ /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/lib/gcc/arm-raspbian-linux-gnueabi/12.3.0/include-fixed/pthread.h \
+ /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/bits/setjmp.h \
+ /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/bits/types/struct___jmp_buf_tag.h \
+ /home/setr/arm-cross-comp-env/arm-raspbian-linux-gnueabi/arm-raspbian-linux-gnueabi/sysroot/usr/include/arm-linux-gnueabihf/bits/pthread_stack_min-dynamic.h \
+ /home/setr/Bureau/setr-lab3/src/utils.h

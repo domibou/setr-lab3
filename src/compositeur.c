@@ -61,20 +61,24 @@
 #include <sched.h>
 #include "schedsupp.h"
 
+#include <math.h>
+
+
 #include "allocateurMemoire.h"
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
 #define MAX_FLUX 4
 
-// Fonction permettant de récupérer le temps courant sous forme double
-// double get_time()
-// {
-// 	struct timeval t;
-// 	struct timezone tzp;
-// 	gettimeofday(&t, &tzp);
-// 	return (double)t.tv_sec + (double)(t.tv_usec)*1e-6;
-// }
+//Fonction permettant de récupérer le temps courant sous forme double
+double get_time()
+{
+	struct timeval t;
+	struct timezone tzp;
+	gettimeofday(&t, &tzp);
+	return (double)t.tv_sec + (double)(t.tv_usec)*1e-6;
+}
+
 
 
 // Cette fonction écrit l'image dans le framebuffer, à la position demandée. Elle est déjà codée pour vous,
@@ -188,7 +192,6 @@ void ecrireImage(const int position, const int total,
 
 int main(int argc, char* argv[])
 {
-	printf("DEBUT\n");
     // TODO
     // ÉCRIVEZ ICI votre code d'analyse des arguments du programme et d'initialisation des zones mémoire partagées
 	// Code lisant les options sur la ligne de commande
@@ -201,7 +204,6 @@ int main(int argc, char* argv[])
         return -1;
     }
 	if (0) {
-		printf("if 0\n");
     //if(strcmp(argv[1], "--debug") == 0){
         // Mode debug, vous pouvez changer ces valeurs pour ce qui convient dans vos tests
         printf("Mode debug selectionne pour le compositeur\n");
@@ -209,7 +211,6 @@ int main(int argc, char* argv[])
         //sortie = (char*)"/mem2";
     }
     else {
-		printf("else\n");
     	int c;
         int deadlineParamIndex = 0;
         char* splitString;
@@ -217,7 +218,6 @@ int main(int argc, char* argv[])
         opterr = 0;
 
         while ((c = getopt (argc, argv, "s:d:")) != -1){
-			printf("while opt: %d", c);
             switch (c)
                 {
                 case 's':
@@ -284,12 +284,8 @@ int main(int argc, char* argv[])
 	
 	for (int i = 0; i < nbrActifs; i++) {
 		entrees[i] = argv[optind + i];
-		printf("entree[i]: %s\n", entrees[i]);
-		printf("memPartage[i]: %s\n", memoiresPartagees[i]);
 		initMemoirePartageeLecteur(entrees[i], memoiresPartagees[i]);
-		printf("init done:");
 		images[i] = (unsigned char*)tempsreel_malloc(memoiresPartagees[i]->tailleDonnees);
-		printf("iamges[]i: %d\n", sizeof(images[i]));
 	}
 
     // On desactive le buffering pour les printf(), pour qu'il soit possible de les voir depuis votre ordinateur
@@ -367,46 +363,59 @@ int main(int argc, char* argv[])
 		return -1;
     }
 
+	FILE *fichier = fopen("stats.txt", "w");
+	if (fichier == NULL) {
+		perror("impossible d'ouvrir le fichier stats.txt");
+		return -1;
+	}
 
-    while(1){
-            // Boucle principale du programme
-            // TODO
-            // Appelez ici ecrireImage() avec les images provenant des différents flux vidéo
-            // Attention à ne pas mélanger les flux, et à ne pas bloquer sur un mutex (ce qui
-            // bloquerait l'interface entière)
-            // Nous vous conseillons d'implémenter une limitation du nombre de FPS (images par
-            // seconde), nombre qui est spécifié pour chaque flux. Il est inutile d'aller plus
-            // vite que le nombre de FPS demandé, et cela consomme plus de ressources, ce qui
-            // peut rendre plus difficile l'exécution des configurations difficiles.
-        
-            // N'oubliez pas que toutes les images fournies à ecrireImage() DOIVENT être en
-            // 427x240 (voir le commentaire en haut du document).
+	double t0 = get_time();
+	double t = 0;
+	int interval = 5;
+	double nextTime = t0 + interval;
+	double frameRate[MAX_FLUX] = {0, 0, 0, 0};
+	int frameCount[MAX_FLUX] = {0, 0, 0, 0};
+	int lastFrameCount[MAX_FLUX] = {0, 0, 0, 0};
+	char stats[500];
 
-			printf("nbrActifs:: %d", nbrActifs);
+	while (1) {
+		t = get_time() - t0;
+		if (get_time() >= nextTime) {
+			nextTime = get_time() + interval;
+			stats[0] = '\0';
+			sprintf(stats, "[%.1f] ", t);
 			for (int i = 0; i < nbrActifs; i++) {
-				if (pthread_mutex_trylock(&(memoiresPartagees[i]->header->mutex)) == 0) {
-					printf("lock acqed\n");
-					memoiresPartagees[i]->header->frameReader++;
-					memcpy(images[i], memoiresPartagees[i]->data, memoiresPartagees[i]->tailleDonnees);
-					memoiresPartagees[i]->copieCompteur = memoiresPartagees[i]->header->frameWriter;
-					pthread_mutex_unlock(&(memoiresPartagees[i]->header->mutex));
+				frameRate[i] = (frameCount[i] - lastFrameCount[i]) / (double)interval; 
+				lastFrameCount[i] = frameCount[i];
 
-					ecrireImage(i, 
-                        nbrActifs, 
-                        fbfd, 
-                        fbp, 
-                        vinfo.xres, 
-                        vinfo.yres, 
-                        &vinfo, 
-                        finfo.line_length,
-                        images[i],
-                        memoiresPartagees[i]->header->hauteur,
-                        memoiresPartagees[i]->header->largeur,
-                        memoiresPartagees[i]->header->canaux);
-				}
-				
+				char bufferString[100];
+				sprintf(bufferString, "Entree %d: moy=%.1f fps | ", i+1, frameRate[i]);
+				strcat(stats, bufferString);
 			}
-    }
+			strcat(stats, "\n");
+			fprintf(fichier, "%s", stats);
+			fflush(fichier);
+			printf("%s", stats);
+		}
+
+		for (int i = 0; i < nbrActifs; i++) {
+			if (pthread_mutex_trylock(&(memoiresPartagees[i]->header->mutex)) == 0) {
+				memoiresPartagees[i]->header->frameReader++;
+				memcpy(images[i], memoiresPartagees[i]->data, memoiresPartagees[i]->tailleDonnees);
+				memoiresPartagees[i]->copieCompteur = memoiresPartagees[i]->header->frameWriter;
+				pthread_mutex_unlock(&(memoiresPartagees[i]->header->mutex));
+
+				ecrireImage(i, nbrActifs, fbfd, fbp, vinfo.xres, vinfo.yres, &vinfo, 
+							finfo.line_length, images[i], 
+							memoiresPartagees[i]->header->hauteur, 
+							memoiresPartagees[i]->header->largeur, 
+							memoiresPartagees[i]->header->canaux);
+
+				frameCount[i]++;
+			}
+		}
+	}
+
 
 
     // cleanup
@@ -419,6 +428,8 @@ int main(int argc, char* argv[])
     }
     // Fermer le framebuffer
     close(fbfd);
+
+	fclose(fichier);
 
     return 0;
 

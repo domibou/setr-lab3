@@ -16,7 +16,6 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
     while (descripteur < 0) {
         descripteur = shm_open(identifiant, O_RDWR, 0666);
         //usleep(DELAI_INIT_READER_USEC);
-        printf("descrpteur: %d",descripteur);
         sleep(1);
     }
     
