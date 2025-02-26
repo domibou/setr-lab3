@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <getopt.h>
 
 #include <sys/ioctl.h>
 
@@ -60,12 +61,15 @@
 #include <sched.h>
 #include "schedsupp.h"
 
+#include <math.h>
+
 #include "allocateurMemoire.h"
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
+#define MAX_FLUX 4
 
-// Fonction permettant de récupérer le temps courant sous forme double
+//Fonction permettant de récupérer le temps courant sous forme double
 double get_time()
 {
 	struct timeval t;
@@ -73,6 +77,7 @@ double get_time()
 	gettimeofday(&t, &tzp);
 	return (double)t.tv_sec + (double)(t.tv_usec)*1e-6;
 }
+
 
 
 // Cette fonction écrit l'image dans le framebuffer, à la position demandée. Elle est déjà codée pour vous,
@@ -188,8 +193,96 @@ int main(int argc, char* argv[])
 {
     // TODO
     // ÉCRIVEZ ICI votre code d'analyse des arguments du programme et d'initialisation des zones mémoire partagées
-    int nbrActifs;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
-    
+	// Code lisant les options sur la ligne de commande
+    int modeOrdonnanceur = ORDONNANCEMENT_NORT;     // NORT est la valeur par defaut
+    unsigned int runtime, deadline, period;         // Dans le cas de l'ordonnanceur DEADLINE
+
+
+    if(argc < 1){
+        printf("Nombre d'arguments insuffisant\n");
+        return -1;
+    }
+	if (0) {
+    //if(strcmp(argv[1], "--debug") == 0){
+        // Mode debug, vous pouvez changer ces valeurs pour ce qui convient dans vos tests
+        printf("Mode debug selectionne pour le compositeur\n");
+        //entree = (char*)"/mem1";
+        //sortie = (char*)"/mem2";
+    }
+    else {
+    	int c;
+        int deadlineParamIndex = 0;
+        char* splitString;
+
+        opterr = 0;
+
+        while ((c = getopt (argc, argv, "s:d:")) != -1){
+            switch (c)
+                {
+                case 's':
+                    // On selectionne le mode d'ordonnancement
+                    if(strcmp(optarg, "NORT") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_NORT;
+                    }
+                    else if(strcmp(optarg, "RR") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_RR;
+                    }
+                    else if(strcmp(optarg, "FIFO") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_FIFO;
+                    }
+                    else if(strcmp(optarg, "DEADLINE") == 0){
+                        modeOrdonnanceur = ORDONNANCEMENT_DEADLINE;
+                    }
+                    else{
+                        modeOrdonnanceur = ORDONNANCEMENT_NORT;
+                        printf("Mode d'ordonnancement %s non valide, defaut sur NORT\n", optarg);
+                    }
+                    break;
+                case 'd':
+                    // Dans le cas DEADLINE, on peut recevoir des parametres
+                    // Si un autre mode d'ordonnacement est selectionne, ces
+                    // parametres peuvent simplement etre ignores
+                    splitString = strtok(optarg, ",");
+                    while (splitString != NULL)
+                    {
+                        if(deadlineParamIndex == 0){
+                            // Runtime
+                            runtime = atoi(splitString);
+                        }
+                        else if(deadlineParamIndex == 1){
+                            deadline = atoi(splitString);
+                        }
+                        else{
+                            period = atoi(splitString);
+                            break;
+                        }
+                        deadlineParamIndex++;
+                        splitString = strtok(NULL, ",");
+                    }
+                    break;
+                default:
+                    continue;
+                }
+        }
+        // Ce qui suit est la description des zones memoires d'entree et de sortie
+        if(argc - optind < 1){
+            printf("Arguments manquants (au moins un flux entree necessaire)\n");
+            return -1;
+        }
+    } 
+
+	char* entrees[MAX_FLUX] = {0};
+	struct memPartage* memoiresPartagees[MAX_FLUX] = {0};
+	unsigned char* images[MAX_FLUX] = {0};
+	int nbrActifs = argc - optind;
+	
+	for (int i = 0; i < nbrActifs; i++) {
+		memoiresPartagees[i] = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+		entrees[i] = argv[optind + i];
+		initMemoirePartageeLecteur(entrees[i], memoiresPartagees[i]);
+		images[i] = (unsigned char*)tempsreel_malloc(memoiresPartagees[i]->tailleDonnees);
+	}
+
     // On desactive le buffering pour les printf(), pour qu'il soit possible de les voir depuis votre ordinateur
 	setbuf(stdout, NULL);
 	
@@ -265,41 +358,86 @@ int main(int argc, char* argv[])
 		return -1;
     }
 
+	FILE *fichier = fopen("stats.txt", "w");
+	if (fichier == NULL) {
+		perror("impossible d'ouvrir le fichier stats.txt");
+		return -1;
+	}
 
-    while(1){
-            // Boucle principale du programme
-            // TODO
-            // Appelez ici ecrireImage() avec les images provenant des différents flux vidéo
-            // Attention à ne pas mélanger les flux, et à ne pas bloquer sur un mutex (ce qui
-            // bloquerait l'interface entière)
-            // Nous vous conseillons d'implémenter une limitation du nombre de FPS (images par
-            // seconde), nombre qui est spécifié pour chaque flux. Il est inutile d'aller plus
-            // vite que le nombre de FPS demandé, et cela consomme plus de ressources, ce qui
-            // peut rendre plus difficile l'exécution des configurations difficiles.
-        
-            // N'oubliez pas que toutes les images fournies à ecrireImage() DOIVENT être en
-            // 427x240 (voir le commentaire en haut du document).
-        
-            // Exemple d'appel à ecrireImage (n'oubliez pas de remplacer les arguments commençant par A_REMPLIR!)
-            ecrireImage(A_REMPLIR_POSITION_ACTUELLE, 
-                        nbrActifs, 
-                        fbfd, 
-                        fbp, 
-                        vinfo.xres, 
-                        vinfo.yres, 
-                        &vinfo, 
-                        finfo.line_length,
-                        A_REMPLIR_DONNEES_DE_LA_TRAME,
-                        A_REMPLIR_HAUTEUR_DE_LA_TRAME,
-                        A_REMPLIR_LARGEUR_DE_LA_TRAME,
-                        A_REMPLIR_NOMBRECANAUX_DANS_LA_TRAME);
-    }
+	double t0 = get_time();
+	double t = 0;
+	double interval = 5.0;
+	double nextTime = t0 + interval;
+
+	double maxFps = 30.0;
+	double maxAllowedTimeBetweenFrames = 1.0 / maxFps;
+
+	double frameRate[MAX_FLUX] = {0, 0, 0, 0};
+	int frameCount[MAX_FLUX] = {0, 0, 0, 0};
+	int lastFrameCount[MAX_FLUX] = {0, 0, 0, 0};
+
+	double writeTimeStamp = 0;
+	double lastWriteTimeStamp[MAX_FLUX] = {0, 0, 0, 0};
+	double delayBetweenFrames[MAX_FLUX] = {0, 0, 0, 0};
+	double lastDelayBetweenFrames[MAX_FLUX] = {0, 0, 0, 0};
+
+	double maxDelayBetweenFrames[MAX_FLUX] = {0, 0, 0, 0};
+
+	char stats[500];
+
+	while (1) {
+		t = get_time() - t0;
+		if (get_time() >= nextTime) {
+			nextTime = get_time() + interval;
+			stats[0] = '\0';
+			sprintf(stats, "[%.1f] ", t);
+			for (int i = 0; i < nbrActifs; i++) {
+				frameRate[i] = (frameCount[i] - lastFrameCount[i]) / interval; 
+				lastFrameCount[i] = frameCount[i];
+
+				char bufferString[100];
+				sprintf(bufferString, "Entree %d: moy= %.1f fps, max= %.1f ms | ", i+1, frameRate[i], maxDelayBetweenFrames[i] * 1000);
+				strcat(stats, bufferString);
+			}
+			strcat(stats, "\n");
+			fprintf(fichier, "%s", stats);
+			fflush(fichier);
+			printf("%s", stats);
+		}
+
+		for (int i = 0; i < nbrActifs; i++) {
+			if (pthread_mutex_trylock(&(memoiresPartagees[i]->header->mutex)) == 0) {
+				memoiresPartagees[i]->header->frameReader++;
+				memcpy(images[i], memoiresPartagees[i]->data, memoiresPartagees[i]->tailleDonnees);
+				memoiresPartagees[i]->copieCompteur = memoiresPartagees[i]->header->frameWriter;
+				pthread_mutex_unlock(&(memoiresPartagees[i]->header->mutex));
+
+				writeTimeStamp = get_time();
+				double delay = writeTimeStamp - lastWriteTimeStamp[i];
+				if (delay >= maxAllowedTimeBetweenFrames) { 
+					delayBetweenFrames[i] = delay;
+					ecrireImage(i, nbrActifs, fbfd, fbp, vinfo.xres, vinfo.yres, &vinfo, 
+							finfo.line_length, images[i], 
+							memoiresPartagees[i]->header->hauteur, 
+							memoiresPartagees[i]->header->largeur, 
+							memoiresPartagees[i]->header->canaux);
+
+					if (delayBetweenFrames[i] >= maxDelayBetweenFrames[i]) {
+						maxDelayBetweenFrames[i] = delayBetweenFrames[i];
+					}
+					lastWriteTimeStamp[i] = writeTimeStamp;
+					lastDelayBetweenFrames[i] = delayBetweenFrames[i];
+					frameCount[i]++;
+				}
+			}
+		}
+	}
+
 
 
     // cleanup
     // Retirer le mmap
     munmap(fbp, screensize);
-
 
     // reset the display mode
     if (ioctl(fbfd, FBIOPUT_VSCREENINFO, &orig_vinfo)) {
@@ -307,6 +445,8 @@ int main(int argc, char* argv[])
     }
     // Fermer le framebuffer
     close(fbfd);
+
+	fclose(fichier);
 
     return 0;
 
