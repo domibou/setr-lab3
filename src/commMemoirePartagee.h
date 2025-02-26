@@ -61,6 +61,7 @@ struct memPartage{
     int fd;
     struct memPartageHeader *header;
     size_t tailleDonnees;
+    // position of the data
     unsigned char* data;
     uint32_t copieCompteur;             // Permet de se rappeler le compteur de l'autre processus
 };
@@ -74,6 +75,13 @@ int initMemoirePartageeEcrivain(const char* identifiant,
                                 struct memPartage *zone,
                                 size_t taille,
                                 struct memPartageHeader* headerInfos);
+
+void closeMemoirePartageeEcrivain(
+    const char* identifiant,
+    struct memPartage *zone,
+    size_t taille,
+    struct memPartageHeader* headerInfos
+);
 
 // Appelé par le lecteur pour se mettre en attente d'un résultat
 int attenteLecteur(struct memPartage *zone);
