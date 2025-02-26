@@ -51,7 +51,7 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
 // Appelé au début du programme pour l'initialisation de la zone mémoire (cas de l'écrivain)
 int initMemoirePartageeEcrivain(const char* identifiant, struct memPartage *zone, size_t taille, struct memPartageHeader* headerInfos) {
     int descripteur = shm_open(identifiant, O_RDWR | O_CREAT, 0666);
-    taille = ftruncate(descripteur, taille);   
+    ftruncate(descripteur, taille);  
 
     void* ptr = mmap(NULL, taille, PROT_READ | PROT_WRITE, MAP_SHARED, descripteur, 0);
     memset(ptr, 0, taille);
@@ -79,13 +79,23 @@ int initMemoirePartageeEcrivain(const char* identifiant, struct memPartage *zone
     zone->tailleDonnees = taille - sizeof(struct memPartageHeader);
     zone->data = data;
 
+    printf("ZONE DATA: %p\n", zone->data);
+    printf("ENTETE ZONE HAUTEUR: %d\n", zone->header->hauteur);
+    printf("CANAUX: %d\n", zone->header->canaux);
+    
+
+
     return 1;
 }
 
 int attenteLecteur(struct memPartage *zone) {
-    while (zone->header->frameReader == 0) {
+    pthread_mutex_lock(&(zone->header->mutex));
+    while (zone->header->frameWriter == zone->copieCompteur) {
+        pthread_mutex_unlock(&(zone->header->mutex));
         usleep(DELAI_WAIT_USEC);
+        pthread_mutex_lock(&(zone->header->mutex));
     }
+    pthread_mutex_unlock(&(zone->header->mutex));
     return 0;
 }
 int attenteLecteurAsync(struct memPartage *zone) {
@@ -93,8 +103,12 @@ int attenteLecteurAsync(struct memPartage *zone) {
 }
 
 int attenteEcrivain(struct memPartage *zone) {
+    pthread_mutex_lock(&(zone->header->mutex));
     while (zone->header->frameReader == zone->copieCompteur) {
+        pthread_mutex_unlock(&(zone->header->mutex));
         usleep(DELAI_WAIT_USEC);
+        pthread_mutex_lock(&(zone->header->mutex));
     }
+    pthread_mutex_unlock(&(zone->header->mutex));
     return 0;
 }

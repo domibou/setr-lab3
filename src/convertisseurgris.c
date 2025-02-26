@@ -17,6 +17,7 @@
 #include "allocateurMemoire.h"
 #include "commMemoirePartagee.h"
 #include "utils.h"
+#include <getopt.h>
 
 int main(int argc, char* argv[]){
     // On desactive le buffering pour les printf(), pour qu'il soit possible de les voir depuis votre ordinateur
@@ -125,49 +126,47 @@ int main(int argc, char* argv[]){
     // Le buffer de sortie (output) DOIT être préalloué en considérant les dimensions de l'image.
 
     // 
-    struct memPartage memoireLecture = {0};
-    struct memPartageHeader headerLecture = {0};
-    initMemoirePartageeLecteur(entree, &memoireLecture);
+    struct memPartage* memoireLecture = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+    initMemoirePartageeLecteur(entree, memoireLecture);
 
-    unsigned int hauteur = memoireLecture.header->hauteur;
-    unsigned int largeur = memoireLecture.header->largeur;
-    unsigned int canaux = 1; // pcq conversion en gris
+    unsigned int hauteur = memoireLecture->header->hauteur;
+    unsigned int largeur = memoireLecture->header->largeur;
+    unsigned int canaux = 1;
 
-    struct memPartage memoireEcriture = {0};
+    struct memPartage* memoireEcriture = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
     unsigned int tailleMemoireEcriture = sizeof(struct memPartageHeader) + (hauteur * largeur * canaux);
 
-    initMemoirePartageeEcrivain(sortie, &memoireEcriture, tailleMemoireEcriture, &headerLecture);
-
-    unsigned char* image = (unsigned char*)tempsreel_malloc(memoireLecture.tailleDonnees);
-    unsigned char* imageFiltree = (unsigned char*)tempsreel_malloc(memoireEcriture.tailleDonnees);
+    initMemoirePartageeEcrivain(sortie, memoireEcriture, tailleMemoireEcriture, memoireLecture->header);
+    unsigned char* image = (unsigned char*)tempsreel_malloc(memoireLecture->tailleDonnees);
+    unsigned char* imageFiltree = (unsigned char*)tempsreel_malloc(memoireEcriture->tailleDonnees);
 
     // un processus ecrivain-lecteur interagit avec deux processus a la fois et a donc deux mutexes a gerer pour les deux 
     // memoires partagees: un pour la lecture de l'image a convertir et un autre pour l'ecriture de l'image convertie
     while (1) {
         // d'abord on est un lecteur
-        pthread_mutex_lock(&(memoireLecture.header->mutex));
-        memoireLecture.header->frameReader++;
-        memcpy(image, memoireLecture.data, memoireLecture.tailleDonnees);
-        memoireLecture.copieCompteur = memoireLecture.header->frameWriter;
+        pthread_mutex_lock(&(memoireLecture->header->mutex));
+        memoireLecture->header->frameReader++;
+        memcpy(image, memoireLecture->data, memoireLecture->tailleDonnees);
+        memoireLecture->copieCompteur = memoireLecture->header->frameWriter;
         convertToGray(image, hauteur, largeur, canaux, imageFiltree);
-        pthread_mutex_unlock(&(memoireLecture.header->mutex));
-        attenteLecteur(&memoireLecture);
+        pthread_mutex_unlock(&(memoireLecture->header->mutex));
+        attenteLecteur(memoireLecture);
 
         // ensuite on est un ecrivain
-        memcpy(memoireEcriture.data, imageFiltree, memoireEcriture.tailleDonnees);
-        memoireEcriture.copieCompteur = memoireEcriture.header->frameReader;
-        pthread_mutex_unlock(&(memoireEcriture.header->mutex));
-        attenteEcrivain(&memoireEcriture);
-        pthread_mutex_lock(&(memoireEcriture.header->mutex));
-        memoireEcriture.header->frameWriter++;
+        memcpy(memoireEcriture->data, imageFiltree, memoireEcriture->tailleDonnees);
+        memoireEcriture->copieCompteur = memoireEcriture->header->frameReader;
+        pthread_mutex_unlock(&(memoireEcriture->header->mutex));
+        attenteEcrivain(memoireEcriture);
+        pthread_mutex_lock(&(memoireEcriture->header->mutex));
+        memoireEcriture->header->frameWriter++;
 
     }
     tempsreel_free(image);
     tempsreel_free(imageFiltree);
     shm_unlink(entree);
     shm_unlink(sortie);
-    close(memoireEcriture.fd);
-    close(memoireLecture.fd);
+    close(memoireEcriture->fd);
+    close(memoireLecture->fd);
 
     return 0;
 }

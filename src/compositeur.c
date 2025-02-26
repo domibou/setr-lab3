@@ -63,7 +63,6 @@
 
 #include <math.h>
 
-
 #include "allocateurMemoire.h"
 #include "commMemoirePartagee.h"
 #include "utils.h"
@@ -273,11 +272,6 @@ int main(int argc, char* argv[])
     } 
 
 	char* entrees[MAX_FLUX] = {0};
-	// struct memPartage* m1 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	// struct memPartage* m2 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	// struct memPartage* m3 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	// struct memPartage* m4 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	// struct memPartage* memoiresPartagees[MAX_FLUX] = {m1, m2, m3, m4};
 	struct memPartage* memoiresPartagees[MAX_FLUX] = {0};
 	unsigned char* images[MAX_FLUX] = {0};
 	int nbrActifs = argc - optind;
