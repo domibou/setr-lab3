@@ -23,6 +23,7 @@
 #include <string.h>
 
 #define DELAI_INIT_READER_USEC 1000
+#define DELAI_WAIT_USEC 1000
 
 /* Architecture du buffer partagé (voir l'énoncé pour plus de détails) :
  *

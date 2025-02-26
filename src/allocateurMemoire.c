@@ -13,7 +13,7 @@ static unsigned char* memory_pool = NULL;
 static size_t pool_size = 0;
 static size_t pool_offset = 0;
 
-int prepareMemoire(size_t tailleImageEntree, size_t tailleImageSortie) {
+int prepareMemoire_cornel(size_t tailleImageEntree, size_t tailleImageSortie) {
     size_t max_size = (tailleImageEntree > tailleImageSortie) ? tailleImageEntree : tailleImageSortie;
 
     if (memory_pool == NULL) {
@@ -29,7 +29,7 @@ int prepareMemoire(size_t tailleImageEntree, size_t tailleImageSortie) {
     return 0; // Return success
 }
 
-void* tempsreel_malloc(size_t taille) {
+void* tempsreel_malloc_cornel(size_t taille) {
     if (pool_offset + taille <= pool_size) {
         void* ptr = memory_pool + pool_offset;
         pool_offset += taille;  // Move the offset forward after allocation
@@ -39,6 +39,12 @@ void* tempsreel_malloc(size_t taille) {
         return NULL;  // Return NULL if there's not enough memory
     }
     // return malloc(taille);
+}
+
+// Ces deux fonctions doivent pouvoir s'utiliser exactement comme malloc() et free()
+// (dans la limite de la mémoire disponible, bien sûr)
+void* tempsreel_malloc(size_t taille) {
+    return malloc(taille);
 }
 
 void tempsreel_free(void* ptr) {
