@@ -128,15 +128,29 @@ int main(int argc, char* argv[]){
     // 
     struct memPartage* memoireLecture = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
     initMemoirePartageeLecteur(entree, memoireLecture);
+    
+    struct memPartageHeader* headerInfos = (struct memPartageHeader*)tempsreel_malloc(sizeof(struct memPartageHeader));
+    int canaux = 1;
 
-    unsigned int hauteur = memoireLecture->header->hauteur;
-    unsigned int largeur = memoireLecture->header->largeur;
-    unsigned int canaux = 1;
+    pthread_mutex_lock(&(memoireLecture->header->mutex));
+    int hauteur = memoireLecture->header->hauteur;
+    int largeur = memoireLecture->header->largeur;
 
+    headerInfos->fps = memoireLecture->header->fps;
+    headerInfos->frameReader = memoireLecture->header->frameReader;
+    headerInfos->frameWriter = memoireLecture->header->frameWriter;
+    headerInfos->hauteur = hauteur;
+    headerInfos->largeur = largeur;
+    
+    headerInfos->canaux = canaux;
+    headerInfos->mutex = memoireLecture->header->mutex;
+    pthread_mutex_unlock(&(memoireLecture->header->mutex));
+
+    unsigned int taille = sizeof(struct memPartageHeader) + (hauteur* largeur * canaux);
     struct memPartage* memoireEcriture = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-    unsigned int tailleMemoireEcriture = sizeof(struct memPartageHeader) + (hauteur * largeur * canaux);
+    initMemoirePartageeEcrivain(sortie, memoireEcriture, taille, headerInfos);
+    printf("ECRIVAIN INITED\n");
 
-    initMemoirePartageeEcrivain(sortie, memoireEcriture, tailleMemoireEcriture, memoireLecture->header);
     unsigned char* image = (unsigned char*)tempsreel_malloc(memoireLecture->tailleDonnees);
     unsigned char* imageFiltree = (unsigned char*)tempsreel_malloc(memoireEcriture->tailleDonnees);
 
@@ -153,12 +167,14 @@ int main(int argc, char* argv[]){
         attenteLecteur(memoireLecture);
 
         // ensuite on est un ecrivain
+        pthread_mutex_lock(&(memoireEcriture->header->mutex));
         memcpy(memoireEcriture->data, imageFiltree, memoireEcriture->tailleDonnees);
         memoireEcriture->copieCompteur = memoireEcriture->header->frameReader;
+        memoireEcriture->header->frameWriter++;
         pthread_mutex_unlock(&(memoireEcriture->header->mutex));
         attenteEcrivain(memoireEcriture);
-        pthread_mutex_lock(&(memoireEcriture->header->mutex));
-        memoireEcriture->header->frameWriter++;
+        //pthread_mutex_lock(&(memoireEcriture->header->mutex));
+        //memoireEcriture->header->frameWriter++;
 
     }
     tempsreel_free(image);

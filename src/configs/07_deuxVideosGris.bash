@@ -8,7 +8,7 @@ sudo rm /dev/shm/mem*           # On retire les identifiants des zones mémoire 
 echo "[Script] 07_deuxVideosGris"
 echo "[Script] Lancement decodeurs"
 sudo ./decodeur 240p/02_Sintel.ulv /mem1 &
-sudo ./decodeur 240p/01_ToS.ulv /mem2 &
+zsudo ./decodeur 240p/01_ToS.ulv /mem2 &
 echo "[Script] En attente de creation de /mem1 et /mem2"
 while [ ! -f /dev/shm/mem1 ] || [ ! -f /dev/shm/mem2 ]
 do
