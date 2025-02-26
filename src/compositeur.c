@@ -273,16 +273,17 @@ int main(int argc, char* argv[])
     } 
 
 	char* entrees[MAX_FLUX] = {0};
-	struct memPartage* m1 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	struct memPartage* m2 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	struct memPartage* m3 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	struct memPartage* m4 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
-	struct memPartage* memoiresPartagees[MAX_FLUX] = {m1, m2, m3, m4};
-	//struct memPartage* memoiresPartagees[MAX_FLUX] = {0};
+	// struct memPartage* m1 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	// struct memPartage* m2 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	// struct memPartage* m3 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	// struct memPartage* m4 = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
+	// struct memPartage* memoiresPartagees[MAX_FLUX] = {m1, m2, m3, m4};
+	struct memPartage* memoiresPartagees[MAX_FLUX] = {0};
 	unsigned char* images[MAX_FLUX] = {0};
 	int nbrActifs = argc - optind;
 	
 	for (int i = 0; i < nbrActifs; i++) {
+		memoiresPartagees[i] = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
 		entrees[i] = argv[optind + i];
 		initMemoirePartageeLecteur(entrees[i], memoiresPartagees[i]);
 		images[i] = (unsigned char*)tempsreel_malloc(memoiresPartagees[i]->tailleDonnees);
@@ -371,11 +372,23 @@ int main(int argc, char* argv[])
 
 	double t0 = get_time();
 	double t = 0;
-	int interval = 5;
+	double interval = 5.0;
 	double nextTime = t0 + interval;
+
+	double maxFps = 30.0;
+	double maxAllowedTimeBetweenFrames = 1.0 / maxFps;
+
 	double frameRate[MAX_FLUX] = {0, 0, 0, 0};
 	int frameCount[MAX_FLUX] = {0, 0, 0, 0};
 	int lastFrameCount[MAX_FLUX] = {0, 0, 0, 0};
+
+	double writeTimeStamp = 0;
+	double lastWriteTimeStamp[MAX_FLUX] = {0, 0, 0, 0};
+	double delayBetweenFrames[MAX_FLUX] = {0, 0, 0, 0};
+	double lastDelayBetweenFrames[MAX_FLUX] = {0, 0, 0, 0};
+
+	double maxDelayBetweenFrames[MAX_FLUX] = {0, 0, 0, 0};
+
 	char stats[500];
 
 	while (1) {
@@ -385,11 +398,11 @@ int main(int argc, char* argv[])
 			stats[0] = '\0';
 			sprintf(stats, "[%.1f] ", t);
 			for (int i = 0; i < nbrActifs; i++) {
-				frameRate[i] = (frameCount[i] - lastFrameCount[i]) / (double)interval; 
+				frameRate[i] = (frameCount[i] - lastFrameCount[i]) / interval; 
 				lastFrameCount[i] = frameCount[i];
 
 				char bufferString[100];
-				sprintf(bufferString, "Entree %d: moy=%.1f fps | ", i+1, frameRate[i]);
+				sprintf(bufferString, "Entree %d: moy= %.1f fps, max= %.1f ms | ", i+1, frameRate[i], maxDelayBetweenFrames[i] * 1000);
 				strcat(stats, bufferString);
 			}
 			strcat(stats, "\n");
@@ -405,13 +418,23 @@ int main(int argc, char* argv[])
 				memoiresPartagees[i]->copieCompteur = memoiresPartagees[i]->header->frameWriter;
 				pthread_mutex_unlock(&(memoiresPartagees[i]->header->mutex));
 
-				ecrireImage(i, nbrActifs, fbfd, fbp, vinfo.xres, vinfo.yres, &vinfo, 
+				writeTimeStamp = get_time();
+				double delay = writeTimeStamp - lastWriteTimeStamp[i];
+				if (delay >= maxAllowedTimeBetweenFrames) { 
+					delayBetweenFrames[i] = delay;
+					ecrireImage(i, nbrActifs, fbfd, fbp, vinfo.xres, vinfo.yres, &vinfo, 
 							finfo.line_length, images[i], 
 							memoiresPartagees[i]->header->hauteur, 
 							memoiresPartagees[i]->header->largeur, 
 							memoiresPartagees[i]->header->canaux);
 
-				frameCount[i]++;
+					if (delayBetweenFrames[i] >= maxDelayBetweenFrames[i]) {
+						maxDelayBetweenFrames[i] = delayBetweenFrames[i];
+					}
+					lastWriteTimeStamp[i] = writeTimeStamp;
+					lastDelayBetweenFrames[i] = delayBetweenFrames[i];
+					frameCount[i]++;
+				}
 			}
 		}
 	}

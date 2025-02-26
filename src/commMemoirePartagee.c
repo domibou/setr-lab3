@@ -38,8 +38,7 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
     }
     pthread_mutex_unlock(&(entete->mutex));
 
-    //unsigned char* data = (unsigned char*)ptr + sizeof(struct memPartageHeader);
-    unsigned char* data = (unsigned char *)ptr + sizeof(struct memPartageHeader);
+    unsigned char* data = (unsigned char*)ptr + sizeof(struct memPartageHeader);
 
     zone->fd = descripteur;
     zone->header = entete;
