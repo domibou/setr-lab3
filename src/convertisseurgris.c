@@ -177,7 +177,6 @@ int main(int argc, char* argv[]){
     }
     tempsreel_free(image);
     tempsreel_free(imageFiltree);
-    shm_unlink(entree);
     shm_unlink(sortie);
     close(memoireEcriture->fd);
     close(memoireLecture->fd);

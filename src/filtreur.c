@@ -38,7 +38,7 @@ int main(int argc, char* argv[]){
     char *entree, *sortie;
     int modeOrdonnanceur = ORDONNANCEMENT_NORT;
     unsigned int runtime, deadline, period;
-    int filterType;
+    int filter = -1;
 
     if(argc < 2){
         printf("Nombre d'arguments insuffisant\n");
@@ -58,7 +58,6 @@ int main(int argc, char* argv[]){
         char* splitString;
 
         opterr = 0;
-        int filterType;
 
         while ((c = getopt (argc, argv, "s:d:f:")) != -1){
             switch (c)
@@ -102,10 +101,10 @@ int main(int argc, char* argv[]){
                     break;
                 case 'f':
                     if(strcmp(optarg, "0") == 0) {
-                        filterType = 0;
+                        filter = 0;
                     }
                     else if (strcmp(optarg, "1") == 0) {
-                        filterType = 1;
+                        filter = 1;
                     }
                     else {
                         printf("valeur invalide pour l'argument -f");
@@ -147,13 +146,13 @@ int main(int argc, char* argv[]){
 
     int kernel_size = 3;
     float sigma = 5;
-    
+
     while (1) {
         pthread_mutex_lock(&(memoireLecture->header->mutex));
         memoireLecture->header->frameReader++;
         memcpy(image, memoireLecture->data, memoireLecture->tailleDonnees);
         memoireLecture->copieCompteur = memoireLecture->header->frameWriter;
-        if (filterType == 0) {
+        if (filter == 0) {
             lowpassFilter(hauteur, largeur, image, imageFiltree, kernel_size, sigma, canaux);
         }
         else {
@@ -173,7 +172,6 @@ int main(int argc, char* argv[]){
     
     tempsreel_free(image);
     tempsreel_free(imageFiltree);
-    shm_unlink(entree);
     shm_unlink(sortie);
     close(memoireEcriture->fd);
     close(memoireLecture->fd);
