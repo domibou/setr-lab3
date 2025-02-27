@@ -11,7 +11,6 @@
 
 // TODO: implementez ici les fonctions decrites dans commMemoirePartagee.h
 int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone) {
-    // on initialise la zone du LECTEUR, on ne la pas recu du processus ecrivain
     int descripteur = -1;
     while (descripteur < 0) {
         descripteur = shm_open(identifiant, O_RDWR, 0666);
@@ -27,7 +26,6 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
     }
 
     void* ptr = mmap(NULL, taille_shm, PROT_READ | PROT_WRITE, MAP_SHARED, descripteur, 0);
-    // REFERENCE de l'entete de L'ECRIVAIN
     struct memPartageHeader* entete =  (struct memPartageHeader*) ptr;
     pthread_mutex_lock(&(entete->mutex));
     while (entete->frameWriter == 0) {
@@ -47,7 +45,6 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
     return 1;
 }
 
-// Appelé au début du programme pour l'initialisation de la zone mémoire (cas de l'écrivain)
 int initMemoirePartageeEcrivain(const char* identifiant, struct memPartage *zone, size_t taille, struct memPartageHeader* headerInfos) {
     int descripteur = shm_open(identifiant, O_RDWR | O_CREAT, 0666);
     if (descripteur == -1) {
@@ -82,10 +79,6 @@ int initMemoirePartageeEcrivain(const char* identifiant, struct memPartage *zone
     zone->header = entete;
     zone->tailleDonnees = taille - sizeof(struct memPartageHeader);
     zone->data = data;
-
-    printf("ZONE DATA: %p\n", zone->data);
-    printf("ENTETE ZONE HAUTEUR: %d\n", zone->header->hauteur);
-    printf("CANAUX: %d\n", zone->header->canaux);
     pthread_mutex_unlock(&(zone->header->mutex));
 
     return 1;

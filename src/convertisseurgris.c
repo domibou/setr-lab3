@@ -149,15 +149,11 @@ int main(int argc, char* argv[]){
     unsigned int taille = sizeof(struct memPartageHeader) + (hauteur* largeur * canaux);
     struct memPartage* memoireEcriture = (struct memPartage*)tempsreel_malloc(sizeof(struct memPartage));
     initMemoirePartageeEcrivain(sortie, memoireEcriture, taille, headerInfos);
-    printf("ECRIVAIN INITED\n");
 
     unsigned char* image = (unsigned char*)tempsreel_malloc(memoireLecture->tailleDonnees);
     unsigned char* imageFiltree = (unsigned char*)tempsreel_malloc(memoireEcriture->tailleDonnees);
 
-    // un processus ecrivain-lecteur interagit avec deux processus a la fois et a donc deux mutexes a gerer pour les deux 
-    // memoires partagees: un pour la lecture de l'image a convertir et un autre pour l'ecriture de l'image convertie
     while (1) {
-        // d'abord on est un lecteur
         pthread_mutex_lock(&(memoireLecture->header->mutex));
         memoireLecture->header->frameReader++;
         memcpy(image, memoireLecture->data, memoireLecture->tailleDonnees);
@@ -166,7 +162,6 @@ int main(int argc, char* argv[]){
         pthread_mutex_unlock(&(memoireLecture->header->mutex));
         attenteLecteur(memoireLecture);
 
-        // ensuite on est un ecrivain
         memcpy(memoireEcriture->data, imageFiltree, memoireEcriture->tailleDonnees);
         memoireEcriture->copieCompteur = memoireEcriture->header->frameReader;
         pthread_mutex_unlock(&(memoireEcriture->header->mutex));
@@ -177,9 +172,9 @@ int main(int argc, char* argv[]){
     }
     tempsreel_free(image);
     tempsreel_free(imageFiltree);
-    shm_unlink(sortie);
-    close(memoireEcriture->fd);
-    close(memoireLecture->fd);
+    //shm_unlink(sortie);
+    //close(memoireEcriture->fd);
+    //close(memoireLecture->fd);
 
     return 0;
 }
