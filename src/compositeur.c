@@ -433,8 +433,6 @@ int main(int argc, char* argv[])
 		}
 	}
 
-
-
     // cleanup
     // Retirer le mmap
     munmap(fbp, screensize);

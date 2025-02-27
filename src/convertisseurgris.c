@@ -167,14 +167,12 @@ int main(int argc, char* argv[]){
         attenteLecteur(memoireLecture);
 
         // ensuite on est un ecrivain
-        pthread_mutex_lock(&(memoireEcriture->header->mutex));
         memcpy(memoireEcriture->data, imageFiltree, memoireEcriture->tailleDonnees);
         memoireEcriture->copieCompteur = memoireEcriture->header->frameReader;
-        memoireEcriture->header->frameWriter++;
         pthread_mutex_unlock(&(memoireEcriture->header->mutex));
         attenteEcrivain(memoireEcriture);
-        //pthread_mutex_lock(&(memoireEcriture->header->mutex));
-        //memoireEcriture->header->frameWriter++;
+        pthread_mutex_lock(&(memoireEcriture->header->mutex));
+        memoireEcriture->header->frameWriter++;
 
     }
     tempsreel_free(image);

@@ -15,8 +15,7 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
     int descripteur = -1;
     while (descripteur < 0) {
         descripteur = shm_open(identifiant, O_RDWR, 0666);
-        //usleep(DELAI_INIT_READER_USEC);
-        sleep(0.05);
+        usleep(DELAI_INIT_READER_USEC);
     }
     
     struct stat fileStat = {0};
@@ -50,19 +49,23 @@ int initMemoirePartageeLecteur(const char* identifiant, struct memPartage *zone)
 
 // Appelé au début du programme pour l'initialisation de la zone mémoire (cas de l'écrivain)
 int initMemoirePartageeEcrivain(const char* identifiant, struct memPartage *zone, size_t taille, struct memPartageHeader* headerInfos) {
-    printf("CANAUX PASSED: %d", headerInfos->canaux);
     int descripteur = shm_open(identifiant, O_RDWR | O_CREAT, 0666);
+    if (descripteur == -1) {
+        perror("impossible d'ouvrir le fichier");
+        return -1;
+    }
+ 
     ftruncate(descripteur, taille);  
 
     void* ptr = mmap(NULL, taille, PROT_READ | PROT_WRITE, MAP_SHARED, descripteur, 0);
     memset(ptr, 0, taille);
-    memcpy(ptr, headerInfos, sizeof(struct memPartageHeader));
 
     struct memPartageHeader* entete = (struct memPartageHeader*) ptr;
 
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
-    pthread_mutexattr_setprotocol(&attr, _POSIX_THREAD_PRIO_PROTECT);
+    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+    pthread_mutexattr_setprotocol(&attr, _POSIX_THREAD_PRIO_INHERIT);
     pthread_mutex_init(&(entete->mutex), &attr);
     
     pthread_mutex_lock(&(entete->mutex));
