@@ -6,6 +6,8 @@
  * 
  * Fichier de déclaration des fonctions de l'allocateur mémoire temps réel
  * Ne modifiez pas les prototypes de fonction écrits ici.
+ * This is the functions to handle a process pre allocated memory
+ * Do not mixup with commMemoirePartagee which handles shared memory
  ******************************************************************************/
 
 #ifndef ALLOC_MEM_H
@@ -35,7 +37,5 @@ int prepareMemoire(size_t tailleImageEntree, size_t tailleImageSortie);
 void* tempsreel_malloc(size_t taille);
 
 void tempsreel_free(void* ptr);
-
-// N'oubliez pas de créer le fichier allocateurMemoire.c et d'y implémenter les fonctions décrites ici!
 
 #endif
